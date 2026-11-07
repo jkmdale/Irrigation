@@ -21,16 +21,16 @@ python3 -m http.server 8080 --bind 0.0.0.0
 Then on your phone (same Wi-Fi) open `http://<your-computer-ip>:8080/`.
 Find your IP with `ipconfig getifaddr en0` (Mac) or `ipconfig` (Windows).
 Note: "Add to Home Screen" and offline mode need HTTPS, so test those on
-the Vercel URL. Plain HTTP on your LAN is fine for checking layout.
+the GitHub Pages URL. Plain HTTP on your LAN is fine for checking layout.
 
-## Deploy to Vercel
+## Deployment
 
-```bash
-npx vercel login
-npx vercel --prod
-```
+Deploys automatically to GitHub Pages on every push to `main` via
+`.github/workflows/pages.yml`. Live at https://jkmdale.github.io/Irrigation/
 
-Accept the defaults when asked (no framework, no build command, output `.`).
+All paths in the app are relative so it works under the `/Irrigation/`
+sub-path. `vercel.json` is kept in case you ever want to host on Vercel
+instead (import the repo at vercel.com/new, no build step).
 
 ## Updating the app
 

@@ -2,19 +2,20 @@
 // Strategy: cache-first. Everything the app needs is cached on install so it
 // opens offline. Bump CACHE_VERSION whenever index.html or the icons change,
 // so phones pick up the new files instead of serving the old cache forever.
+// All paths are relative so the app works under a sub-path such as /Irrigation/.
 const CACHE_VERSION = 'v1';
 const CACHE_NAME = `watering-${CACHE_VERSION}`;
 
 // Files to cache up front. The Google Fonts CSS is included so the fonts
 // still resolve offline once they have been loaded at least once.
 const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/icon-512-maskable.png',
-  '/icons/apple-touch-icon.png',
+  './',
+  './index.html',
+  './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-512-maskable.png',
+  './icons/apple-touch-icon.png',
   'https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Figtree:wght@400;500;600;700&display=swap'
 ];
 
@@ -54,7 +55,7 @@ self.addEventListener('fetch', (event) => {
         return response;
       }).catch(() => {
         // Offline and not cached: for page navigations fall back to the app shell.
-        if (event.request.mode === 'navigate') return caches.match('/index.html');
+        if (event.request.mode === 'navigate') return caches.match('./index.html');
       });
     })
   );
