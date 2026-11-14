@@ -68,6 +68,19 @@ section{margin-top:22px}
 .today li span:last-child{opacity:.9;white-space:nowrap}
 .today .none{opacity:.9;margin-top:12px;font-size:15px}
 .today .season{margin-top:14px;font-size:13px;opacity:.85}
+/* Day stepper: swipe the card or tap the arrows to see other days */
+.today{touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.today .top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.today .top .date{margin-bottom:0}
+.today .nav{display:flex;align-items:center;gap:6px}
+.today .nav button{border:0;cursor:pointer;color:#fff;background:rgba(255,255,255,.16);font:inherit;-webkit-tap-highlight-color:transparent}
+.today .nav .step{width:32px;height:32px;border-radius:999px;font-size:20px;line-height:1;display:grid;place-items:center;padding:0}
+.today .nav .back{height:32px;border-radius:999px;padding:0 12px;font-size:13px;font-weight:600}
+.today .slide-l{animation:todayInL .22s ease-out}
+.today .slide-r{animation:todayInR .22s ease-out}
+@keyframes todayInL{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes todayInR{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.today .slide-l,.today .slide-r{animation:none}}
 
 /* Map */
 .map{position:relative;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);background:#0b1210}
@@ -468,21 +481,78 @@ const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const seasonFor = m => SEASONS.find(s => s.months.includes(m));
 
 /* ---------- Today ---------- */
-function renderToday(){
-  const now = new Date();
-  const s = seasonFor(now.getMonth());
-  const dow = now.getDay();
-  const dateStr = now.toLocaleDateString('en-NZ',{weekday:'long', day:'numeric', month:'long'});
+// dayOffset: 0 = today, 1 = tomorrow, -1 = yesterday, and so on.
+let dayOffset = 0;
+
+function renderToday(dir){
+  // Work out which date we are showing
+  const d = new Date();
+  d.setHours(12,0,0,0);                 // midday avoids daylight-saving edge cases
+  d.setDate(d.getDate() + dayOffset);
+  const s = seasonFor(d.getMonth());    // season follows the viewed date, so December shows summer times
+  const dow = d.getDay();
+  const dateStr = d.toLocaleDateString('en-NZ',{weekday:'long', day:'numeric', month:'long'});
   const runs = s.items.filter(i => i.days.includes(dow)).sort((a,b)=>a.start.localeCompare(b.start));
-  let html = `<div class="date">${dateStr}</div><h2>${runs.length ? 'Watering today' : 'Nothing scheduled today'}</h2>`;
+
+  // Heading wording: today / tomorrow / yesterday, otherwise just the date above it
+  const when = dayOffset===0 ? ' today' : dayOffset===1 ? ' tomorrow' : dayOffset===-1 ? ' yesterday' : '';
+  const heading = runs.length ? 'Watering' + when : 'Nothing scheduled' + when;
+
+  // Top row: date on the left, arrows (and a Today button when away from today) on the right
+  let html = `<div class="top"><div class="date">${dateStr}</div><div class="nav">`
+    + (dayOffset!==0 ? `<button class="back" data-today aria-label="Back to today">Today</button>` : '')
+    + `<button class="step" data-step="-1" aria-label="Previous day">&#8249;</button>`
+    + `<button class="step" data-step="1" aria-label="Next day">&#8250;</button>`
+    + `</div></div><h2>${heading}</h2>`;
   if (runs.length){
     html += '<ul>' + runs.map(r => `<li><span>${r.name}</span><span>${r.start}, ${r.dur}</span></li>`).join('') + '</ul>';
   } else {
     html += `<div class="none">${s.key==='winter' ? 'Winter. Everything is off.' : 'A rest day. Next runs are on the schedule.'}</div>`;
   }
   html += `<div class="season">${s.title}. Hunter seasonal adjust ${s.adjust}.</div>`;
-  $('#today').innerHTML = html;
+
+  // Wrap the content so it can slide in from the side it came from
+  const cls = dir>0 ? 'slide-l' : dir<0 ? 'slide-r' : '';
+  $('#today').innerHTML = `<div class="${cls}">${html}</div>`;
 }
+
+function stepDay(n){ dayOffset += n; renderToday(n); }
+
+// Tap handling for the arrow and Today buttons (attached once, survives re-renders)
+$('#today').addEventListener('click', e => {
+  const step = e.target.closest('[data-step]');
+  if (step){ stepDay(Number(step.dataset.step)); return; }
+  if (e.target.closest('[data-today]')){ const dir = dayOffset>0 ? -1 : 1; dayOffset = 0; renderToday(dir); }
+});
+
+// Swipe handling: left = next day, right = previous day. Vertical scrolling is left alone.
+(function(){
+  const card = $('#today');
+  let x0 = null, y0 = 0, horizontal = null;
+  card.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; horizontal = null;
+  }, {passive:true});
+  card.addEventListener('touchmove', e => {
+    if (x0 === null) return;
+    const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+    if (horizontal === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) horizontal = Math.abs(dx) > Math.abs(dy);
+    if (horizontal){
+      const inner = card.firstElementChild;
+      if (inner){ inner.style.transition = 'none'; inner.style.transform = `translateX(${dx*0.4}px)`; inner.style.opacity = String(1 - Math.min(Math.abs(dx)/400, .4)); }
+    }
+  }, {passive:true});
+  card.addEventListener('touchend', e => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    const wasHorizontal = horizontal;
+    x0 = null; horizontal = null;
+    if (wasHorizontal && Math.abs(dx) > 50){ stepDay(dx < 0 ? 1 : -1); return; }
+    const inner = card.firstElementChild;   // not far enough: spring back into place
+    if (inner){ inner.style.transition = 'transform .18s ease-out, opacity .18s ease-out'; inner.style.transform = ''; inner.style.opacity = ''; }
+  });
+  card.addEventListener('touchcancel', () => { x0 = null; horizontal = null; renderToday(0); });
+})();
 
 /* ---------- Map and zones ---------- */
 function renderZones(hl){
