@@ -3,7 +3,7 @@
 // opens offline. Bump CACHE_VERSION whenever index.html or the icons change,
 // so phones pick up the new files instead of serving the old cache forever.
 // All paths are relative so the app works under a sub-path such as /Irrigation/.
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = `watering-${CACHE_VERSION}`;
 
 // Files to cache up front. The Google Fonts CSS is included so the fonts
@@ -23,7 +23,9 @@ const PRECACHE_URLS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
+      // cache: 'reload' skips the browser's own HTTP cache, so a new version
+      // always stores fresh copies rather than a stale page from earlier.
+      .then((cache) => cache.addAll(PRECACHE_URLS.map((url) => new Request(url, { cache: 'reload' }))))
       .then(() => self.skipWaiting()) // activate the new worker straight away
   );
 });

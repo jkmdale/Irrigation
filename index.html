@@ -633,6 +633,14 @@ renderToday(); renderPins(); renderZones(); renderSeasons(); renderSchedule(); r
 <script>
 // Register the service worker so the app works offline and can be installed.
 if ('serviceWorker' in navigator) {
+  // When an updated version takes over, reload once so the new content shows
+  // straight away. Skipped on the very first visit, when nothing was installed yet.
+  var hadController = !!navigator.serviceWorker.controller, refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    if (!hadController || refreshing) return;
+    refreshing = true;
+    location.reload();
+  });
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('sw.js').catch(function (err) {
       console.error('Service worker registration failed:', err);
