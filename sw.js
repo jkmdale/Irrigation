@@ -3,7 +3,7 @@
 // opens offline. Bump CACHE_VERSION whenever index.html or the icons change,
 // so phones pick up the new files instead of serving the old cache forever.
 // All paths are relative so the app works under a sub-path such as /Irrigation/.
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `watering-${CACHE_VERSION}`;
 
 // Files to cache up front. The Google Fonts CSS is included so the fonts
